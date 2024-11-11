@@ -23,3 +23,12 @@ class RandomAgent:
         legal_moves = np.where(actions == 1)[0]
         ind = random.randint(0, len(legal_moves)-1)
         return legal_moves[ind]
+
+    def check_move_operation(self, action):
+        piece_id, r = divmod(action, pow(32, 2))
+        start_val, end_val = divmod(r, 32)
+        start = [0, 0]
+        end = [0, 0]
+        start[0], start[1] = divmod(start_val, 8)
+        end[0], end[1] = divmod(end_val, 8)
+        return piece_id + 1, start, end

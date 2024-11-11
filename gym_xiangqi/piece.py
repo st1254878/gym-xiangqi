@@ -6,12 +6,12 @@ import pygame
 
 from gym_xiangqi.utils import move_to_action_space, is_ally
 from gym_xiangqi.constants import (
-    ORTHOGONAL, DIAGONAL, ELEPHANT_MOVE, HORSE_MOVE,    # piece moves
+    ORTHOGONAL,    # piece moves
     BOARD_ROWS, BOARD_COLS,                             # board specs
     PALACE_ALLY_ROW, PALACE_ENEMY_ROW, PALACE_COL,      # palace bound
     RIVER_LOW, RIVER_HIGH,                              # river bound
     MAX_REP,                                            # repetition bound
-    BLACK, ALIVE, ALLY, ENEMY,                          # piece states
+    BLACK, ALIVE, ALLY, ENEMY,                         # piece states
     COOR_DELTA, COOR_OFFSET,                            # board coordinate
     PIECE_WIDTH, PIECE_HEIGHT,                          # piece sizes
     MINI_PIECE_WIDTH, MINI_PIECE_HEIGHT,                # mini piece sizes
@@ -41,6 +41,7 @@ class Piece:
         self.color = color
         self.row = row
         self.col = col
+        self.is_cover = True
         self.state = ALIVE
         self.legal_moves = None
         self.piece_width = PIECE_WIDTH
@@ -51,16 +52,26 @@ class Piece:
         self.select_image = None
         self.mini_image = None
         self.move_sound = None
-
     def move(self, new_row, new_col):
         """
         Take one move among given piece's allowed moves
         Update piece's coordinates internally
         """
+
         if self.move_sound is not None:
             self.move_sound.play()
-        self.row = new_row
-        self.col = new_col
+        if self.row == new_row and self.col == new_col :
+            self.is_cover = False
+            self.set_basic_image()
+        else:
+            self.row = new_row
+            self.col = new_col
+
+    def handle_move(self,enemy_piece, new_row, new_col,cover_state):
+        if enemy_piece.row == new_row and enemy_piece.col == new_col and cover_state[enemy_piece.row][enemy_piece.col]:
+            enemy_piece.move(new_row,new_col)
+        else:
+            self.move(new_row,new_col)
 
     def get_pygame_coor(self):
         x = self.col*COOR_DELTA + COOR_OFFSET
@@ -72,7 +83,7 @@ class Piece:
             file_path = PATH_TO_BLACK
         else:
             file_path = PATH_TO_RED
-
+        # pygame.init()
         target_file = os.path.join(file_path, filename)
         target_file = pkg_resources.resource_filename(__name__, target_file)
         image = pygame.image.load(target_file).convert_alpha()
@@ -82,7 +93,10 @@ class Piece:
         return image
 
     def set_basic_image(self):
-        filename = self.name + ".png"
+        if self.is_cover:
+            filename = "blankchess.png"
+        else:
+            filename = self.name + ".png"
         self.basic_image = (self.load_image(filename,
                             self.piece_width, self.piece_height))
 
@@ -106,7 +120,7 @@ class Piece:
 
 
 def check_action(piece_id, orig_pos, cur_pos,
-                 repeat, offset, i, state, actions):
+                 repeat, offset, i, state, actions,cover_state):
     """
     This is general searching procedure. Given the following parameters,
     repeatedly search in the same direction until either end of the board
@@ -128,40 +142,57 @@ def check_action(piece_id, orig_pos, cur_pos,
     r = cur_pos[0]
     c = cur_pos[1]
 
+
     if not is_ally(piece_id):
         sign = ENEMY
         piece_id *= ENEMY
     else:
         sign = ALLY
 
-    for i in range(repeat):
-        rb = 0 <= r < BOARD_ROWS
-        cb = 0 <= c < BOARD_COLS
-
-        if not rb or not cb:
-            return i
-
-        # if ally piece is located, can't go further
-        if state[r][c] * sign > 0:
-            break
-
-        if check_flying_general(state, sign, piece_id, orig_pos, (r, c)):
-            return 0
-
-        action_idx = move_to_action_space(piece_id, orig_pos, (r, c))
+    if orig_pos == cur_pos:
+        action_idx = move_to_action_space(piece_id,orig_pos,(r,c))
         actions[action_idx] = 1
+    else:
+        for i in range(repeat):
+            rb = 0 <= r < BOARD_ROWS
+            cb = 0 <= c < BOARD_COLS
 
-        if state[r][c] != 0:
-            break
+            if not rb or not cb:
+                return i
 
-        r += offset[0]
-        c += offset[1]
+            # if ally piece is located, can't go further
+            if state[r][c] * sign > 0 or cover_state[r][c]==17:
+                break
+            if piece_id == 1:
+                compare_id = 1
+            else:
+                compare_id = piece_id//2
+            if state[r][c] == 1:
+                target_id = 1
+            else:
+                target_id = abs(state[r][c])//2
 
+            if compare_id <= target_id or (compare_id >= 6 and abs(state[r][c]) == 1) or state[r][c] == EMPTY:
+                if piece_id == 1 and abs(state[r][c] >= 12):
+                    break
+                action_idx = move_to_action_space(piece_id, orig_pos, (r, c))
+                if abs(r - cur_pos[0]) + abs(c - cur_pos[1]) >= 1:
+                    actions[action_idx] = 0
+                else:
+                    actions[action_idx] = 1
+
+                if state[r][c] != 0:
+                    break
+
+                r += offset[0]
+                c += offset[1]
+            else:
+                break
     return i + 1
 
-
+"""
 def check_flying_general(state, side, piece_id, start, end):
-    """
+  
     Check if given input action results in flying general
 
     Parameters:
@@ -172,7 +203,7 @@ def check_flying_general(state, side, piece_id, start, end):
         end (tuple(int)): destination coordinate of given piece
     Return (bool):
         indicates whether the action results in flying general or not
-    """
+  
 
     # simulate input action without altering current game state
     new_state = np.array(state)
@@ -205,7 +236,7 @@ def check_flying_general(state, side, piece_id, start, end):
         if new_state[r][ally_gen_col] != EMPTY:
             return False
     return True
-
+"""
 
 class General(Piece):
     """
@@ -219,26 +250,19 @@ class General(Piece):
         super(General, self).__init__(color, row, col)
         self.name = "GEN"
 
-    def get_actions(self, piece_id, state, actions):
+    def get_actions(self, piece_id, state, actions, cover_state):
         """
         Finds legal moves for the General
         """
-        if not is_ally(piece_id):
-            low = PALACE_ENEMY_ROW[0]
-            high = PALACE_ENEMY_ROW[1]
+        UnFold_move = None
+        if self.is_cover:
+            check_action(piece_id,(self.row, self.col),(self.row, self.col),1,UnFold_move,0,state,actions,cover_state)
         else:
-            low = PALACE_ALLY_ROW[0]
-            high = PALACE_ALLY_ROW[1]
+            for offset in ORTHOGONAL:
+                next_pos = (self.row + offset[0], self.col + offset[1])
 
-        for offset in ORTHOGONAL:
-            next_pos = (self.row + offset[0], self.col + offset[1])
-
-            # general must stay in the palace: row and column bound check
-            rb = low <= next_pos[0] <= high
-            cb = PALACE_COL[0] <= next_pos[1] <= PALACE_COL[1]
-            if rb and cb:
                 check_action(piece_id, (self.row, self.col), next_pos,
-                             1, offset, 0, state, actions)
+                             1, offset, 0, state, actions,cover_state)
 
 
 class Advisor(Piece):
@@ -252,26 +276,22 @@ class Advisor(Piece):
         super(Advisor, self).__init__(color, row, col)
         self.name = "ADV"
 
-    def get_actions(self, piece_id, state, actions):
+    def get_actions(self, piece_id, state, actions, cover_state):
         """
         Finds legal moves for the Advisors
         """
-        if not is_ally(piece_id):
-            low = PALACE_ENEMY_ROW[0]
-            high = PALACE_ENEMY_ROW[1]
+
+
+        UnFold_move = None
+        if self.is_cover:
+            check_action(piece_id,(self.row, self.col),(self.row, self.col),1,UnFold_move,0,state,actions,cover_state)
         else:
-            low = PALACE_ALLY_ROW[0]
-            high = PALACE_ALLY_ROW[1]
+            for offset in ORTHOGONAL:
+                next_pos = (self.row + offset[0], self.col + offset[1])
 
-        for offset in DIAGONAL:
-            next_pos = (self.row + offset[0], self.col + offset[1])
 
-            # advisor must stay in the palace: row and column bound check
-            rb = low <= next_pos[0] <= high
-            cb = PALACE_COL[0] <= next_pos[1] <= PALACE_COL[1]
-            if rb and cb:
                 check_action(piece_id, (self.row, self.col), next_pos,
-                             1, offset, 0, state, actions)
+                             1, offset, 0, state, actions,cover_state)
 
 
 class Elephant(Piece):
@@ -287,34 +307,21 @@ class Elephant(Piece):
         super(Elephant, self).__init__(color, row, col)
         self.name = "ELE"
 
-    def get_actions(self, piece_id, state, actions):
+    def get_actions(self, piece_id, state, actions,cover_state):
         """
         Finds legal moves for the Elephants
         """
-        if not is_ally(piece_id):
-            low = 0
-            high = RIVER_LOW
+
+        UnFold_move = None
+        if self.is_cover:
+            check_action(piece_id,(self.row, self.col),(self.row, self.col),1,UnFold_move,0,state,actions,cover_state)
         else:
-            low = RIVER_HIGH
-            high = BOARD_ROWS - 1
+            for offset in ORTHOGONAL:
+                next_pos = (self.row + offset[0], self.col + offset[1])
 
-        for offset in ELEPHANT_MOVE:
-            next_pos = (self.row + offset[0], self.col + offset[1])
 
-            # bound check: must not cross the river
-            rb = low <= next_pos[0] <= high
-            cb = 0 <= next_pos[1] < BOARD_COLS
-            if not rb or not cb:
-                continue
-
-            # must be not blocked
-            block_r = self.row + offset[0] // 2
-            block_c = self.col + offset[1] // 2
-            if state[block_r][block_c] != 0:
-                continue
-
-            check_action(piece_id, (self.row, self.col), next_pos,
-                         1, offset, 0, state, actions)
+                check_action(piece_id, (self.row, self.col), next_pos,
+                             1, offset, 0, state, actions,cover_state)
 
 
 class Horse(Piece):
@@ -330,33 +337,16 @@ class Horse(Piece):
         super(Horse, self).__init__(color, row, col)
         self.name = "HRS"
 
-    def get_actions(self, piece_id, state, actions):
-        """
-        Finds legal moves for the Horses
-        """
-        # horse moves consist of 2 separate moves:
-        # 1. along the line up or down or left or right
-        # 2. diagonally left or right along the same direction
-        for first_move, second_move in HORSE_MOVE:
-            next_r = self.row + first_move[0]
-            next_c = self.col + first_move[1]
+    def get_actions(self, piece_id, state, actions,cover_state):
 
-            # bound check
-            rb = 0 <= next_r < BOARD_ROWS
-            cb = 0 <= next_c < BOARD_COLS
+        UnFold_move = None
+        if self.is_cover:
+            check_action(piece_id,(self.row, self.col),(self.row, self.col),1,UnFold_move,0,state,actions,cover_state)
+        else:
+            for offset in ORTHOGONAL:
+                next_pos = (self.row + offset[0], self.col + offset[1])
 
-            if not rb or not cb:
-                continue
-
-            # check for any blocking piece
-            if state[next_r][next_c] != 0:
-                continue
-
-            next_pos = (next_r + second_move[0], next_c + second_move[1])
-
-            # no need to recurse on next moves; (0, 0) just a placeholder
-            check_action(piece_id, (self.row, self.col), next_pos,
-                         1, (0, 0), 0, state, actions)
+                check_action(piece_id, (self.row, self.col), next_pos,1, offset, 0, state, actions,cover_state)
 
 
 class Chariot(Piece):
@@ -372,15 +362,16 @@ class Chariot(Piece):
         super(Chariot, self).__init__(color, row, col)
         self.name = "CHR"
 
-    def get_actions(self, piece_id, state, actions):
-        """
-        Find legal moves for the Chariots
-        """
-        for offset in ORTHOGONAL:
-            next_pos = (self.row + offset[0], self.col + offset[1])
-            # No need to check for repetition; check as far as possible
-            check_action(piece_id, (self.row, self.col), next_pos,
-                         MAX_REP, offset, 0, state, actions)
+    def get_actions(self, piece_id, state, actions,cover_state):
+
+        UnFold_move = None
+        if self.is_cover:
+            check_action(piece_id,(self.row, self.col),(self.row, self.col),1,UnFold_move,0,state,actions,cover_state)
+        else:
+            for offset in ORTHOGONAL:
+                next_pos = (self.row + offset[0], self.col + offset[1])
+
+                check_action(piece_id, (self.row, self.col), next_pos, 1, offset, 0, state, actions,cover_state)
 
 
 class Cannon(Piece):
@@ -395,58 +386,61 @@ class Cannon(Piece):
         super(Cannon, self).__init__(color, row, col)
         self.name = "CAN"
 
-    def get_actions(self, piece_id, state, actions):
+    def get_actions(self, piece_id, state, actions,cover_state):
         """
         Find legal moves for the Cannons
         """
-        if not is_ally(piece_id):
-            sign = ENEMY
+
+        UnFold_move = None
+        if self.is_cover:
+            check_action(piece_id,(self.row, self.col),(self.row, self.col),1,UnFold_move,0,state,actions,cover_state)
         else:
-            sign = ALLY
+            if not is_ally(piece_id):
+                sign = ENEMY
+            else:
+                sign = ALLY
 
-        for offset in ORTHOGONAL:
-            # moving positions
-            next_pos = (self.row + offset[0], self.col + offset[1])
-            reps = check_action(piece_id, (self.row, self.col), next_pos,
-                                MAX_REP, offset, 0, state, actions)
+            for offset in ORTHOGONAL:
+                # moving positions
+                next_pos = (self.row + offset[0], self.col + offset[1])
+                reps = check_action(piece_id, (self.row, self.col), next_pos,
+                                    MAX_REP, offset, MAX_REP, state, actions,cover_state)
 
-            # mark the farthest position invalid if it is an enemy
-            last_r = self.row + offset[0] * reps
-            last_c = self.col + offset[1] * reps
+                # mark the farthest position invalid if it is an enemy
+                # print(self.row,self.col,offset,reps)
+                last_r = self.row + offset[0] * reps
+                last_c = self.col + offset[1] * reps
 
-            if state[last_r][last_c] * sign < 0:
-                action_idx = move_to_action_space(piece_id * sign,
-                                                  (self.row, self.col),
-                                                  (last_r, last_c))
-                actions[action_idx] = 0
+                if last_r <= BOARD_ROWS and last_r >= 0 and last_c <= BOARD_COLS and last_c >=0 :
+                    action_idx = move_to_action_space(piece_id * sign,
+                                                      (self.row, self.col),
+                                                      (last_r, last_c))
+                    actions[action_idx] = 0
 
-            # attacking positions
-            next_r = self.row + offset[0] * (reps + 1)
-            next_c = self.col + offset[1] * (reps + 1)
+                # attacking positions
+                next_r = self.row + offset[0] * (reps + 1)
+                next_c = self.col + offset[1] * (reps + 1)
 
-            while True:
-                rb = 0 <= next_r < BOARD_ROWS
-                cb = 0 <= next_c < BOARD_COLS
+                while True:
+                    rb = 0 <= next_r < BOARD_ROWS
+                    cb = 0 <= next_c < BOARD_COLS
 
-                if not rb or not cb:
-                    break
-
-                if state[next_r][next_c] * sign > 0:
-                    break
-                elif state[next_r][next_c] * sign < 0:
-                    if check_flying_general(state, sign, piece_id,
-                                            (self.row, self.col),
-                                            (next_r, next_c)):
+                    if not rb or not cb:
                         break
 
-                    action_idx = move_to_action_space(
-                        piece_id * sign, (self.row, self.col), (next_r, next_c)
-                    )
-                    actions[action_idx] = 1
-                    break
+                    if state[next_r][next_c] * sign > 0 or cover_state[next_r][next_c] == 17:
+                        break
+                    elif state[next_r][next_c] * sign < 0:
 
-                next_r += offset[0]
-                next_c += offset[1]
+
+                        action_idx = move_to_action_space(
+                            piece_id * sign, (self.row, self.col), (next_r, next_c)
+                        )
+                        actions[action_idx] = 1
+                        break
+
+                    next_r += offset[0]
+                    next_c += offset[1]
 
 
 class Soldier(Piece):
@@ -462,27 +456,16 @@ class Soldier(Piece):
         super(Soldier, self).__init__(color, row, col)
         self.name = "SOL"
 
-    def get_actions(self, piece_id, state, actions):
+    def get_actions(self, piece_id, state, actions,cover_state):
         """
-        Find legal moves for the soldiers
+        Finds legal moves for the General
         """
-        # ORTHOGONAL contains 4 moves in clock-wise [UP, RIGHT, DOWN, LEFT]
-        if not is_ally(piece_id):   # enemy side is always at the top half
-            low = RIVER_HIGH
-            high = BOARD_ROWS - 1
-            moves = [2]             # therefore enemy soldiers move downwards
-        else:                       # ally side is always at the bottom half
-            low = 0
-            high = RIVER_LOW
-            moves = [0]             # therefore ally soldiers move upwards
+        UnFold_move = None
+        if self.is_cover:
+            check_action(piece_id, (self.row, self.col), (self.row, self.col), 1, UnFold_move, 0, state, actions,cover_state)
+        else:
+            for offset in ORTHOGONAL:
+                next_pos = (self.row + offset[0], self.col + offset[1])
 
-        # low and high are set to be after-river row ranges
-        if low <= self.row <= high:     # After crossing the river,
-            moves.append(1)             # can move right
-            moves.append(3)             # can move left
-
-        for i in moves:
-            offset = ORTHOGONAL[i]
-            next_pos = (self.row + offset[0], self.col + offset[1])
-            check_action(piece_id, (self.row, self.col), next_pos,
-                         1, offset, 0, state, actions)
+                check_action(piece_id, (self.row, self.col), next_pos,
+                             1, offset, 0, state, actions,cover_state)

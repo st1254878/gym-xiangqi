@@ -1,23 +1,33 @@
 from gym_xiangqi.agents import RandomAgent
+from gym_xiangqi.agents import TestAgent
 from gym_xiangqi.constants import ALLY, PIECE_ID_TO_NAME
 from gym_xiangqi.utils import action_space_to_move
-
+from gym_xiangqi.envs import XiangQiEnv
 import gym
 import time
-
+from gym_xiangqi.constants import (     # NOQA
+    RED, BLACK, PIECE_ID_TO_NAME, ALLY
+)
 
 def main():
-    env = gym.make('gym_xiangqi:xiangqi-v0')
+    env = XiangQiEnv(RED)
     env.render()
     agent = RandomAgent()
-
+    # env.reset()
     done = False
     round = 0
     while not done:
         # Add a slight delay to properly visualize the game.
-        time.sleep(1)
 
-        action = agent.move(env)
+        if round % 2==0:
+            agent = TestAgent()
+            print("can eat i eat!")
+            action = agent.move(env)
+        else:
+            agent = RandomAgent()
+            print("do anything!")
+            action = agent.move(env)
+        time.sleep(2)
         _, reward, done, _ = env.step(action)
         turn = "Ally" if env.turn == ALLY else "Enemy"
         move = action_space_to_move(action)

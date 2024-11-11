@@ -15,8 +15,8 @@ def move_to_action_space(piece_id, start, end):
         Index within the self.possible_actions
     """
     piece_id_val = (piece_id - 1) * pow(TOTAL_POS, 2)
-    start_val = (start[0] * 9 + start[1]) * TOTAL_POS
-    end_val = end[0] * 9 + end[1]
+    start_val = (start[0] * 8 + start[1]) * TOTAL_POS
+    end_val = end[0] * 8 + end[1]
     return piece_id_val + start_val + end_val
 
 
@@ -35,8 +35,8 @@ def action_space_to_move(action):
     start_val, end_val = divmod(r, TOTAL_POS)
     start = [0, 0]
     end = [0, 0]
-    start[0], start[1] = divmod(start_val, 9)
-    end[0], end[1] = divmod(end_val, 9)
+    start[0], start[1] = divmod(start_val, 8)
+    end[0], end[1] = divmod(end_val, 8)
     return piece_id + 1, start, end
 
 

@@ -34,7 +34,6 @@ LOSE = -PIECE_POINTS[1]
 """ PIECE """
 ALLY = 1
 ENEMY = -1
-
 PIECE_CNT = 16              # Total number of pieces in each side
 
 # Piece IDs
@@ -44,10 +43,10 @@ ADVISOR_1 = 2
 ADVISOR_2 = 3
 ELEPHANT_1 = 4
 ELEPHANT_2 = 5
-HORSE_1 = 6
-HORSE_2 = 7
-CHARIOT_1 = 8
-CHARIOT_2 = 9
+HORSE_1 = 9
+HORSE_2 = 8
+CHARIOT_1 = 6
+CHARIOT_2 = 7
 CANNON_1 = 10
 CANNON_2 = 11
 SOLDIER_1 = 12
@@ -65,14 +64,7 @@ PIECE_ID_TO_NAME = [
 
 # Piece Movement Offsets
 ORTHOGONAL = [(-1, 0), (0, 1), (1, 0), (0, -1)]
-DIAGONAL = [(-1, 1), (1, 1), (1, -1), (-1, -1)]
-ELEPHANT_MOVE = [(-2, 2), (2, 2), (2, -2), (-2, -2)]
-HORSE_MOVE = [
-    [(-1, 0), (-1, -1)], [(-1, 0), (-1, 1)],
-    [(0, 1), (-1, 1)], [(0, 1), (1, 1)],
-    [(1, 0), (1, 1)], [(1, 0), (1, -1)],
-    [(0, -1), (1, -1)], [(0, -1), (-1, -1)]
-]
+
 
 # Piece States
 RED = 0
@@ -81,8 +73,8 @@ DEAD = 0
 ALIVE = 1
 
 # Piece Size
-PIECE_WIDTH = 58
-PIECE_HEIGHT = 58
+PIECE_WIDTH = 45
+PIECE_HEIGHT = 45
 MINI_PIECE_WIDTH = 29
 MINI_PIECE_HEIGHT = 29
 
@@ -93,8 +85,8 @@ BOARD_HEIGHT = 577
 BOARD_Y_OFFSET = (WINDOW_HEIGHT/2 - BOARD_HEIGHT/2)
 
 # Board Dimension
-BOARD_ROWS = 10
-BOARD_COLS = 9
+BOARD_ROWS = 4
+BOARD_COLS = 8
 
 # Palace coordinates
 PALACE_ENEMY_ROW = (0, 2)
@@ -106,23 +98,22 @@ RIVER_LOW = 4
 RIVER_HIGH = 5
 
 INITIAL_BOARD = [
-    [-9, -7, -5, -3, -1, -2, -4, -6, -8],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, -11, 0, 0, 0, 0, 0, -10, 0],
-    [-16, 0, -15, 0, -14, 0, -13, 0, -12],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [12, 0, 13, 0, 14, 0, 15, 0, 16],
-    [0, 10, 0, 0, 0, 0, 0, 11, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [8, 6, 4, 2, 1, 3, 5, 7, 9]
+    [-1, -2, -3, -4, -5, -6, -7, -8],
+    [-9, -10, -11, -12, -13, -14, -15, -16],
+    [1, 2, 3, 4, 5, 6, 7, 8],
+    [9, 10, 11, 12, 13, 14, 15, 16]
 ]
-
+COVER_BOARD = [
+    [17, 17, 17, 17, 17, 17, 17, 17],
+    [17, 17, 17, 17, 17, 17, 17, 17],
+    [17, 17, 17, 17, 17, 17, 17, 17],
+    [17, 17, 17, 17, 17, 17, 17, 17]
+]
 """ OTHER """
 MAX_REP = 9         # number that is large enough to cover board width/height
 TOTAL_POS = BOARD_ROWS * BOARD_COLS
 MAX_PERPETUAL_JIANG = 4
 
 """ Piece Coordinate Conversion """
-COOR_DELTA = 57
-COOR_OFFSET = 5
+COOR_DELTA = 55
+COOR_OFFSET = 49

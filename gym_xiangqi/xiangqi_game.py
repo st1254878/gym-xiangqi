@@ -29,6 +29,7 @@ class XiangQiGame:
 
     def __init__(self):
         # PyGame components
+        self.start_pos = None
         self.running = True
         self.dim = (WINDOW_WIDTH, WINDOW_HEIGHT)
         self.display_surf = None
@@ -103,7 +104,7 @@ class XiangQiGame:
         self.sound = Sound(piece_move, bgm)
 
         # play bgm
-        pygame.mixer.music.play(-1)
+        #pygame.mixer.music.play(-1)
 
     def update_pos_next_moves(self):
         if self.cur_selected is None:
@@ -197,29 +198,43 @@ class XiangQiGame:
 
                 # select any ally pieces that is in the clicked range
                 self.find_target_piece(clicked_coor)
-
-                # if another click is made while an ally piece is selected,
-                # this must be a piece movement
                 if self.cur_selected is not None:
-                    # convert to real coordinate
-                    real_clicked_coor = self.to_real_coor(clicked_coor)
-
-                    # define the piece movement as start to end position
-                    s = [self.cur_selected.row, self.cur_selected.col]
-                    e = list(real_clicked_coor[::-1])
-
-                    # validate the piece movement
-                    is_legal = (s, e) in self.cur_selected.legal_moves
-
-                    if is_legal:
-                        self.end_pos = tuple(real_clicked_coor[::-1])
+                    if self.cur_selected.is_cover:
+                        if self.cur_selected_pid<0:
+                            self.cur_selected = self.enemy_piece[self.cur_selected_pid*-1]
 
                         # reset counter after ally turn is over
                         self.counter = COUNT
 
                         # reset piece selection and end my turn
+                        e = [self.cur_selected.row, self.cur_selected.col]
+
+                        self.end_pos = e
                         self.cur_selected = None
                         self.running = False
+                # print(self.cur_selected.is_cover)
+                # if another click is made while an ally piece is selected,
+                # this must be a piece movement
+                    else:
+                        # convert to real coordinate
+                        real_clicked_coor = self.to_real_coor(clicked_coor)
+
+                        # define the piece movement as start to end position
+                        s = [self.cur_selected.row, self.cur_selected.col]
+                        e = list(real_clicked_coor[::-1])
+                        print(self.cur_selected_pid,s,e)
+                        # validate the piece movement
+                        is_legal = (s, e) in self.cur_selected.legal_moves
+
+                        if is_legal:
+                            self.end_pos = tuple(real_clicked_coor[::-1])
+
+                            # reset counter after ally turn is over
+                            self.counter = COUNT
+
+                            # reset piece selection and end my turn
+                            self.cur_selected = None
+                            self.running = False
         """
         # timer decrement every second
         elif event.type == pygame.USEREVENT + 1:
@@ -246,7 +261,8 @@ class XiangQiGame:
         self.screen.blit(self.board_background, (0, BOARD_Y_OFFSET))
 
         # update all cur positions of pieces
-        for i in range(1, len(self.ally_piece)):
+        for i in range(1, 17):
+
             if self.ally_piece[i].is_alive():
                 self.screen.blit(self.ally_piece[i].basic_image,
                                  self.ally_piece[i].get_pygame_coor())
@@ -367,6 +383,28 @@ class XiangQiGame:
             if valid_x and valid_y:
                 self.cur_selected = piece
                 self.cur_selected_pid = piece_id
+                break
+        for piece_id, piece in enumerate(self.enemy_piece[1:], 1):
+            if piece.state == DEAD:
+                continue
+            if not piece.is_cover:
+                continue
+            piece_x, piece_y = piece.get_pygame_coor()
+
+            x_min = piece_x - piece.piece_width/2 + 25
+            x_max = piece_x + piece.piece_width/2 + 25
+
+            valid_x = x_min < clicked_x < x_max
+
+            y_min = piece_y - piece.piece_height/2 + 25
+            y_max = piece_y + piece.piece_height/2 + 25
+
+            valid_y = y_min < clicked_y < y_max
+
+            # if the clicked coord is within the piece range, select it
+            if valid_x and valid_y:
+                self.cur_selected = piece
+                self.cur_selected_pid = piece_id*-1
                 break
 
     def init_timer(self):
@@ -505,3 +543,5 @@ class XiangQiGame:
         self.screen.blit(game_over_text, t_rect)
         pygame.display.update()
         time.sleep(3)
+
+
