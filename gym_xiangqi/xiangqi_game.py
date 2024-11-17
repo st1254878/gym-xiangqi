@@ -259,14 +259,17 @@ class XiangQiGame:
         self.update_kills()
         self.update_bgm_state()
         self.screen.blit(self.board_background, (0, BOARD_Y_OFFSET))
-
+        ally_alive = False
+        enemy_alive = False
         # update all cur positions of pieces
         for i in range(1, 17):
 
             if self.ally_piece[i].is_alive():
+                ally_alive = True
                 self.screen.blit(self.ally_piece[i].basic_image,
                                  self.ally_piece[i].get_pygame_coor())
             if self.enemy_piece[i].is_alive():
+                enemy_alive = True
                 self.screen.blit(self.enemy_piece[i].basic_image,
                                  self.enemy_piece[i].get_pygame_coor())
 
@@ -277,9 +280,12 @@ class XiangQiGame:
 
         self.update_pos_next_moves()
         self.render_kills()
+        if not ally_alive or not enemy_alive:
+            self.game_over()
+        else:
+            # draw all on screen
+            pygame.display.update()
 
-        # draw all on screen
-        pygame.display.update()
 
     def cleanup(self):
         """
@@ -543,5 +549,6 @@ class XiangQiGame:
         self.screen.blit(game_over_text, t_rect)
         pygame.display.update()
         time.sleep(3)
+        pygame.display.quit()
 
 

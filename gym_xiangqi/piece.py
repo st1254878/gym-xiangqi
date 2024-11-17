@@ -173,9 +173,10 @@ def check_action(piece_id, orig_pos, cur_pos,
                 target_id = abs(state[r][c])//2
 
             if compare_id <= target_id or (compare_id >= 6 and abs(state[r][c]) == 1) or state[r][c] == EMPTY:
-                if piece_id == 1 and abs(state[r][c] >= 12):
-                    break
                 action_idx = move_to_action_space(piece_id, orig_pos, (r, c))
+                if piece_id == 1 and abs(state[r][c]) >= 12:
+                    actions[action_idx] = 0
+                    break
                 if abs(r - cur_pos[0]) + abs(c - cur_pos[1]) >= 1:
                     actions[action_idx] = 0
                 else:

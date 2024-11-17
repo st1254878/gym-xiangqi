@@ -263,7 +263,7 @@ class XiangQiEnv(gym.Env):
 
         # Move the piece if legal move is given
         piece, start, end = action_space_to_move(action)
-        print(piece,start,end)
+        #print(piece,start,end)
         pieces[piece].handle_move(backup_pieces[piece], *end,self._cover_state)
         flipmove = False
         if start != end:
