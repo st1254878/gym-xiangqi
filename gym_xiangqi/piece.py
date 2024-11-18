@@ -163,18 +163,18 @@ def check_action(piece_id, orig_pos, cur_pos,
             # if ally piece is located, can't go further
             if state[r][c] * sign > 0 or cover_state[r][c]==17:
                 break
-            if piece_id == 1:
-                compare_id = 1
+            if abs(piece_id) == 1:
+                compare_id = 0
             else:
-                compare_id = piece_id//2
-            if state[r][c] == 1:
-                target_id = 1
+                compare_id = abs(piece_id)//2
+            if abs(state[r][c]) == 1:
+                target_id = 0
             else:
                 target_id = abs(state[r][c])//2
 
-            if compare_id <= target_id or (compare_id >= 6 and abs(state[r][c]) == 1) or state[r][c] == EMPTY:
+            if compare_id <= target_id or (compare_id >= 6 and target_id == 0) or state[r][c] == EMPTY:
                 action_idx = move_to_action_space(piece_id, orig_pos, (r, c))
-                if piece_id == 1 and abs(state[r][c]) >= 12:
+                if compare_id == 0 and target_id >= 6:
                     actions[action_idx] = 0
                     break
                 if abs(r - cur_pos[0]) + abs(c - cur_pos[1]) >= 1:

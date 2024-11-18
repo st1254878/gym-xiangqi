@@ -548,7 +548,7 @@ class XiangQiGame:
         t_rect = game_over_text.get_rect(center=self.screen.get_rect().center)
         self.screen.blit(game_over_text, t_rect)
         pygame.display.update()
-        time.sleep(3)
+        time.sleep(0.5)
         pygame.display.quit()
 
 

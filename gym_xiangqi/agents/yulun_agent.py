@@ -14,8 +14,15 @@ class YulunAgent:
 
     def move(self, env):
         actions = (env.ally_actions if env.turn == ALLY else env.enemy_actions)
+        my_pieces = (env.ally_piece if env.turn == ALLY else env.enemy_piece)
         cannon1 = (env.ally_piece[10] if env.turn == ALLY else env.enemy_piece[10])
         cannon2 = (env.ally_piece[11] if env.turn == ALLY else env.enemy_piece[11])
+        Alive = False
+        for i in range(1, 17):
+            if my_pieces[i].is_alive():
+                Alive = True
+        if not (Alive):
+            return []
         legal_moves = np.where(actions == 1)[0]
         eat_moves = []
         flip_moves = []
@@ -29,11 +36,8 @@ class YulunAgent:
             # print(pieces,s,e)
             if s == e:
                 if cannon1.state == ALIVE or cannon2.state == ALIVE:
-                    if (env.turn == ALLY and (env.ally_piece[pieces].row == s[0] and env.ally_piece[pieces].col == s[1])):
-                        if self.check_cannon_pos(s, env):
-                            cannon_flip.append(move)
-                        else:
-                            flip_moves.append(move)
+                    if self.check_cannon_pos(s, env):
+                        cannon_flip.append(move)
                     else:
                         flip_moves.append(move)
                 else:
@@ -69,7 +73,7 @@ class YulunAgent:
                 nxtc += dir[1]
                 if nxtr >= BOARD_ROWS or nxtr < 0 or nxtc >=BOARD_COLS or nxtc < 0:
                     break
-                if env._cover_state[nxtr][nxtc] == 0 and env.state[nxtr][nxtc]*env.state[s[0]][s[1]] < 0:
+                if env._cover_state[nxtr][nxtc] == 0 and env.state[nxtr][nxtc]*env.turn < 0:
                     if has_pieces_between:
                         return True
                 if not(has_pieces_between):

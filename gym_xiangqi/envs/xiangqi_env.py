@@ -267,7 +267,7 @@ class XiangQiEnv(gym.Env):
         pieces[piece].handle_move(backup_pieces[piece], *end,self._cover_state)
         flipmove = False
         if start != end:
-            print(start," is not ",end)
+            # print(start," is not ",end)
             self._state[start[0]][start[1]] = EMPTY
         else:
             flipmove = True

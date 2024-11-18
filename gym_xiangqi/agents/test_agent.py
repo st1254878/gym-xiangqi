@@ -16,8 +16,14 @@ class TestAgent:
 
     def move(self, env):
         actions = (env.ally_actions if env.turn == ALLY else env.enemy_actions)
+        my_pieces = (env.ally_piece if env.turn == ALLY else env.enemy_piece)
+        Alive = False
+        for i in range(1, 17):
+            if my_pieces[i].is_alive():
+                Alive = True
+        if not(Alive):
+            return []
         legal_moves = np.where(actions == 1)[0]
-        best_reward = float('inf')
         best_moves = []
         normal_moves = []
         # Loop through all legal moves and simulate each one

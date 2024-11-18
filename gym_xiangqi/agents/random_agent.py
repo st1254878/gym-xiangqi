@@ -21,7 +21,17 @@ class RandomAgent:
         actions = (env.ally_actions if env.turn == ALLY
                    else env.enemy_actions)
         legal_moves = np.where(actions == 1)[0]
+        my_pieces = (env.ally_piece if env.turn == ALLY else env.enemy_piece)
+        Alive = False
+        for i in range(1, 17):
+            if my_pieces[i].is_alive():
+                Alive = True
+        if not (Alive):
+            return []
+        if len(legal_moves) == 0:
+            return []
         ind = random.randint(0, len(legal_moves)-1)
+
         return legal_moves[ind]
 
     def check_move_operation(self, action):
