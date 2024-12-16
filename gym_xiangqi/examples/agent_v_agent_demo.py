@@ -1,6 +1,8 @@
+
 from gym_xiangqi.agents import RandomAgent
 from gym_xiangqi.agents import TestAgent
 from gym_xiangqi.agents import YulunAgent
+from gym_xiangqi.agents import select_color
 from gym_xiangqi.constants import ALLY, PIECE_ID_TO_NAME
 from gym_xiangqi.utils import action_space_to_move
 from gym_xiangqi.envs import XiangQiEnv
@@ -23,15 +25,18 @@ def main():
     num_games = 100  # 每组对战的局数
     matchups = [
         ("YulunAgent", YulunAgent,"RandomAgent" , RandomAgent),
-        ("TestAgent", TestAgent, "TestAgent", TestAgent),
-        ("YulunAgent", YulunAgent, "RandomAgent", RandomAgent),
+        ("TestAgent", TestAgent, "YulunAgent", YulunAgent),
+        ("TestAgent", TestAgent, "RandomAgent", RandomAgent),
     ]
-
     for agent1_name, Agent1, agent2_name, Agent2 in matchups:
         print(f"Starting matches: {agent1_name} vs {agent2_name}")
         for game in range(num_games):
             print(f"Game {game + 1} starts!")
+
+            #print(COLOR)
+
             env = XiangQiEnv(RED)
+
             env.render()
 
             # 实例化两个代理
@@ -40,20 +45,25 @@ def main():
             done = False
             round = 0
             winning = 0
-
+            first_action = RandomAgent()
+            action = first_action.move(env)
+            env.select_side(action)
             while not done:
-                if round % 2 == 0:
-                    print(f"Agent2 policy ({agent2_name})")
+
+                message = "紅棋" if env.turn == ALLY else "黑棋"
+                if (round % 2):
+
+                    print(f"Agent2 policy ({agent2_name})控制{message}")
+
                     action = agent2.move(env)
                     if not action:  # 假设表示 Agent2 没有合法动作
                         winning = 1  # Agent1 胜利
                 else:
-                    print(f"Agent1 policy ({agent1_name})")
-                    action = agent1.move(env)
-                    if not action:  # 假设表示 Agent1 没有合法动作
-                        winning = 2  # Agent2 胜利
-
-                time.sleep(0.001)  # 减慢游戏节奏以便观察
+                    print(f"Agent1 policy ({agent1_name})控制{message}")
+                    if round!= 0:
+                        action = agent1.move(env)
+                        if not action:  # 假设表示 Agent1 没有合法动作
+                            winning = 2  # Agent2 胜利
 
                 if winning != 0:
                     break
@@ -79,16 +89,17 @@ def main():
                         else:
                             winning = 3
                         break
+                    time.sleep(0.01)  # 减慢游戏节奏以便观察
                 env.render()
 
             # 关闭环境并记录结果
             env.close()
             if winning == 1:
-                results.append(f"{agent1_name} wins")
+                results.append((agent1_name, agent2_name, f"{agent1_name} wins"))
             elif winning == 2:
-                results.append(f"{agent2_name} wins")
+                results.append((agent1_name, agent2_name, f"{agent2_name} wins"))
             else:
-                results.append("Draw")
+                results.append((agent1_name, agent2_name, "Draw"))
 
             print(f"Game {game + 1} ends! Winner: {results[-1]}")
 
@@ -115,17 +126,23 @@ def calculate_remaining_pieces(env):
 
 
 def plot_results(results):
-    counter = Counter(results)
-    labels = list(counter.keys())
-    counts = list(counter.values())
+    matchup_results = {}
+    for agent1_name, agent2_name, result in results:
+        matchup = f"{agent1_name} vs {agent2_name}"
+        if matchup not in matchup_results:
+            matchup_results[matchup] = {"Draw": 0, f"{agent1_name} wins": 0, f"{agent2_name} wins": 0}
+        matchup_results[matchup][result] += 1
 
-    plt.bar(labels, counts, color=['red', 'blue', 'green', 'purple', 'orange'])
-    plt.xlabel("Result")
-    plt.ylabel("Number of Games")
-    plt.title("Agent vs Agent Results")
-    plt.xticks(rotation=15)
-    plt.show()
+    for matchup, counts in matchup_results.items():
+        labels = list(counts.keys())
+        values = list(counts.values())
 
-
+        plt.figure(figsize=(8, 4))
+        plt.bar(labels, values, color=['red', 'blue', 'green'])
+        plt.xlabel("Result")
+        plt.ylabel("Number of Games")
+        plt.title(f"Results for {matchup}")
+        plt.xticks(rotation=15)
+        plt.show()
 if __name__ == "__main__":
     main()

@@ -3,8 +3,9 @@ import random
 import gym
 from gym import spaces
 from gym.utils import seeding
-import numpy as np
 
+import numpy as np
+from gym_xiangqi.utils import action_space_to_move
 from gym_xiangqi.xiangqi_game import XiangQiGame
 from gym_xiangqi.utils import (
     action_space_to_move,
@@ -130,7 +131,7 @@ class XiangQiEnv(gym.Env):
         Soldier, Soldier, Soldier, Soldier, Soldier
     ]
 
-    def __init__(self, ally_color=RED):
+    def __init__(self, ally_color):
         self.new_board = self.shuffle_board(INITIAL_BOARD)
         self._ally_color = ally_color
         if ally_color == RED:
@@ -255,15 +256,17 @@ class XiangQiEnv(gym.Env):
             jiang_history = self._enemy_jiang_history
 
         # Check for illegal move, flying general, etc. and penalize the agent
+        '''
         if possible_actions[action] == 0:
+            print("move is illegal!")
             return np.array(self._state), ILLEGAL_MOVE, False, {}
-
+        '''
         # Check if opponent is in Jiang condition before processing given move
         pre_jiang_actions = self.check_jiang()
 
         # Move the piece if legal move is given
         piece, start, end = action_space_to_move(action)
-        #print(piece,start,end)
+        print(piece,start,end)
         pieces[piece].handle_move(backup_pieces[piece], *end,self._cover_state)
         flipmove = False
         if start != end:
@@ -559,3 +562,12 @@ class XiangQiEnv(gym.Env):
     @property
     def game(self):
         return self._game
+
+    def select_side(self, movement):
+        """
+        Select a side to be the player (ally or enemy)
+        """
+        piece,s,e = action_space_to_move(movement)
+        if self.state[s[0]][s[1]] < 0:
+            self._turn *= -1
+        return
