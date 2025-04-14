@@ -9,8 +9,8 @@ from gym_xiangqi.utils import action_space_to_move
 from gym_xiangqi.xiangqi_game import XiangQiGame
 from gym_xiangqi.utils import (
     action_space_to_move,
-    move_to_action_space,
-    is_ally
+    move_to_action_space
+    #is_ally
 )
 from gym_xiangqi.piece import (
     General, Advisor, Elephant, Horse, Chariot, Cannon, Soldier
@@ -125,8 +125,8 @@ class XiangQiEnv(gym.Env):
         General,
         Advisor, Advisor,
         Elephant, Elephant,
-        Horse, Horse,
         Chariot, Chariot,
+        Horse, Horse,
         Cannon, Cannon,
         Soldier, Soldier, Soldier, Soldier, Soldier
     ]
@@ -134,12 +134,13 @@ class XiangQiEnv(gym.Env):
     def __init__(self, ally_color):
         self.new_board = self.shuffle_board(INITIAL_BOARD)
         self._ally_color = ally_color
+        self.first_movement = True
         if ally_color == RED:
             self._enemy_color = BLACK
             self._turn = ALLY
         else:
             self._enemy_color = RED
-            self._turn = ENEMY
+            self._turn = ALLY
 
         # Epoch termination flag
         self._done = False
@@ -154,7 +155,7 @@ class XiangQiEnv(gym.Env):
         )
 
         # Action space: encodes start and target position and specific piece
-        n = pow(TOTAL_POS, 2) * PIECE_CNT*4
+        n = pow(TOTAL_POS, 2) * PIECE_CNT * 4
         self.action_space = spaces.Discrete(n)
 
         # Initial board state
@@ -168,8 +169,8 @@ class XiangQiEnv(gym.Env):
 
         # Possible moves: binary list with same shape of action space
         #                 valid action will be represented as 1 else 0
-        self._ally_actions = np.zeros((n, ))
-        self._enemy_actions = np.zeros((n, ))
+        self._ally_actions = np.zeros((n,))
+        self._enemy_actions = np.zeros((n,))
 
         # History of consecutive jiangs (will be used to ban perpetual check)
         self._ally_jiang_history = None
@@ -255,6 +256,7 @@ class XiangQiEnv(gym.Env):
             possible_actions = self.enemy_actions
             jiang_history = self._enemy_jiang_history
 
+
         # Check for illegal move, flying general, etc. and penalize the agent
         '''
         if possible_actions[action] == 0:
@@ -266,8 +268,8 @@ class XiangQiEnv(gym.Env):
 
         # Move the piece if legal move is given
         piece, start, end = action_space_to_move(action)
-        print(piece,start,end)
-        pieces[piece].handle_move(backup_pieces[piece], *end,self._cover_state)
+        print(piece, start, end)
+        pieces[piece].handle_move(backup_pieces[piece], *end, self._cover_state)
         flipmove = False
         if start != end:
             # print(start," is not ",end)
@@ -288,14 +290,18 @@ class XiangQiEnv(gym.Env):
         # Reward based on removed piece
         reward += PIECE_POINTS[abs(rm_piece_id)]
 
+        emeny_piece = (self.enemy_piece if self.turn == ALLY else self.ally_piece)
 
-
-
-
+        # Check if game over
+        if (self.check_win_condition(emeny_piece)):
+            reward += 1000 # winner gets big reward
+            self._done = True
+            self._game.render()
+            self._game.game_over()
+        self.first_movement = False
         # Self-play: agent switches turn between ally and enemy side
-        self._turn *= -1     # ALLY (1) to ENEMY (-1) and vice versa
+        self._turn *= -1  # ALLY (1) to ENEMY (-1) and vice versa
         self.get_possible_actions(self._turn)
-
         # Update state hash.
         self._state_hash = hash(str(self._state))
 
@@ -311,15 +317,13 @@ class XiangQiEnv(gym.Env):
         self._done = False
         self._state = np.array(self.new_board)
         self._cover_state = np.array(COVER_BOARD)
+        self.first_movement = True
         self.init_pieces()
 
         self._ally_jiang_history = {}
         self._enemy_jiang_history = {}
+        self._turn = ALLY
 
-        if self._ally_color == RED:
-            self._turn = ALLY
-        else:
-            self._turn = ENEMY
 
         self.get_possible_actions(self._turn)
         self._game.set_pieces(self._ally_piece, self._enemy_piece)
@@ -384,7 +388,7 @@ class XiangQiEnv(gym.Env):
         # print("time for me to do something")
         self.get_possible_actions(self._turn)
 
-        for piece_id in range(1, PIECE_CNT+1):
+        for piece_id in range(1, PIECE_CNT + 1):
             self.get_possible_actions_by_piece(piece_id)
 
         self._game.run()
@@ -395,9 +399,9 @@ class XiangQiEnv(gym.Env):
 
         # Retrieve user piece movement info
         piece_id = self._game.cur_selected_pid
-        if piece_id<0:
-            start = (self._enemy_piece[piece_id*-1].row,self._enemy_piece[piece_id*-1].col)
-            piece_id = piece_id*-1
+        if piece_id < 0:
+            start = (self._enemy_piece[piece_id * -1].row, self._enemy_piece[piece_id * -1].col)
+            piece_id = piece_id * -1
         else:
             start = (self._ally_piece[piece_id].row,
                      self._ally_piece[piece_id].col)
@@ -409,9 +413,10 @@ class XiangQiEnv(gym.Env):
 
         # Save as instance variables for debugging
         self.user_move_info = (piece_id, start, end)
-        print(piece_id,start,end)
+        print(piece_id, start, end)
         # Process the piece movement in env
         player_action = move_to_action_space(piece_id, start, end)
+        self.first_movement = False
         return self.step(player_action)
 
     def init_pieces(self):
@@ -422,12 +427,25 @@ class XiangQiEnv(gym.Env):
         for r in range(BOARD_ROWS):
             for c in range(BOARD_COLS):
                 piece_id = self.new_board[r][c]
+                print(self.new_board[r][c],end = "  ")
                 init = self.id_to_class[abs(piece_id)]
-                if piece_id < 0:
-                    self._enemy_piece[-piece_id] = init(self._enemy_color,
-                                                        r, c)
-                elif piece_id > 0:
-                    self._ally_piece[piece_id] = init(self._ally_color, r, c)
+                if self._ally_color == RED:
+                    if piece_id < 0:
+                        self._enemy_piece[-piece_id] = init(self._enemy_color,
+                                                            r, c)
+                    elif piece_id > 0:
+                        self._ally_piece[piece_id] = init(self._ally_color, r, c)
+                else:
+                    if piece_id < 0:
+                        self._ally_piece[-piece_id] = init(self._ally_color, r, c)
+                    elif piece_id > 0:
+                        self._enemy_piece[piece_id] = init(self._enemy_color, r, c)
+            print("")
+        '''if self._ally_color == BLACK:
+            for id in range(1, 17):
+                piece = self._ally_piece[id]
+                if piece is not None:
+                    print(id, piece.row, piece.col, piece.color, sep=", ")'''
 
     def get_possible_actions(self, player):
         """
@@ -438,10 +456,12 @@ class XiangQiEnv(gym.Env):
         """
         # Current piece set changes depending on whose turn it is
         if player == ALLY:
+        #    print("ALLY turn")
             piece_set = self._ally_piece
             unflip_piece = self._enemy_piece
             possible_actions = self._ally_actions
         else:
+        #    print("ENEMY turn")
             piece_set = self._enemy_piece
             unflip_piece = self._ally_piece
             possible_actions = self._enemy_actions
@@ -453,11 +473,14 @@ class XiangQiEnv(gym.Env):
 
         for pid, piece_obj in enumerate(piece_set[1:], 1):
             if piece_obj.state == ALIVE:
-                piece_obj.get_actions(pid * self._turn,self._state,possible_actions, self._cover_state)
-        for pid, piece_obj in enumerate(unflip_piece[1:], 1):
-            if piece_obj.is_cover:
-                piece_obj.get_actions(pid * self._turn*-1,self._state,possible_actions, self._cover_state)
-    def get_possible_actions_by_piece(self, piece_id):
+                piece_obj.get_actions(pid * self._turn, self._state, possible_actions, self._cover_state)
+        if not(self.first_movement):
+            for pid, piece_obj in enumerate(unflip_piece[1:], 1):
+                if piece_obj.is_cover:
+                    piece_obj.get_actions(pid * self._turn * -1, self._state, possible_actions, self._cover_state)
+
+    # currently ignored, is_ally function changed but not implemented yet
+    '''def get_possible_actions_by_piece(self, piece_id):
         """
         Given a piece ID, saves the possible actions of the piece
         inside the piece object.
@@ -489,7 +512,7 @@ class XiangQiEnv(gym.Env):
         pieces[piece_id].legal_moves = [
             action_space_to_move(action)[1:] for action in legal_actions
         ]
-
+    '''
     def check_jiang(self):
         """
         Check if the general is in threat (i.e. it is check or "jiang")
@@ -527,6 +550,7 @@ class XiangQiEnv(gym.Env):
         # 將打亂的列表再重新分配成4x8的結構
         shuffled_board = [flat_list[i:i + 8] for i in range(0, len(flat_list), 8)]
         return shuffled_board
+
     @property
     def ally_color(self):
         return self._ally_color
@@ -563,11 +587,11 @@ class XiangQiEnv(gym.Env):
     def game(self):
         return self._game
 
-    def select_side(self, movement):
-        """
-        Select a side to be the player (ally or enemy)
-        """
-        piece,s,e = action_space_to_move(movement)
-        if self.state[s[0]][s[1]] < 0:
-            self._turn *= -1
-        return
+
+    def check_win_condition(self, pieces):
+        gameover = True
+        # update all cur positions of pieces
+        for i in range(1, 17):
+            if pieces[i].is_alive():
+                gameover = False
+        return gameover

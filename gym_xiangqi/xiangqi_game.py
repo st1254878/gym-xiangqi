@@ -257,7 +257,7 @@ class XiangQiGame:
 
         # self.update_timer() # hidden for now
         self.update_kills()
-        self.update_bgm_state()
+        #self.update_bgm_state()
         self.screen.blit(self.board_background, (0, BOARD_Y_OFFSET))
         ally_alive = False
         enemy_alive = False
@@ -278,13 +278,9 @@ class XiangQiGame:
             self.screen.blit(self.cur_selected.select_image,
                              self.cur_selected.get_pygame_coor())
 
-        self.update_pos_next_moves()
+        #self.update_pos_next_moves()
         self.render_kills()
-        if not ally_alive or not enemy_alive:
-            self.game_over()
-        else:
-            # draw all on screen
-            pygame.display.update()
+        pygame.display.update()
 
 
     def cleanup(self):
@@ -548,7 +544,7 @@ class XiangQiGame:
         t_rect = game_over_text.get_rect(center=self.screen.get_rect().center)
         self.screen.blit(game_over_text, t_rect)
         pygame.display.update()
-        time.sleep(0.5)
+        time.sleep(1)
         pygame.display.quit()
 
 

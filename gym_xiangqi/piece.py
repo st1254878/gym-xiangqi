@@ -119,8 +119,7 @@ class Piece:
         return (self.col, self.row)
 
 
-def check_action(piece_id, orig_pos, cur_pos,
-                 repeat, offset, i, state, actions,cover_state):
+def check_action(piece_id, orig_pos, cur_pos, repeat, offset, i, state, actions,cover_state):
     """
     This is general searching procedure. Given the following parameters,
     repeatedly search in the same direction until either end of the board
@@ -163,21 +162,13 @@ def check_action(piece_id, orig_pos, cur_pos,
             # if ally piece is located, can't go further
             if state[r][c] * sign > 0 or cover_state[r][c]==17:
                 break
-            if abs(piece_id) == 1:
-                compare_id = 0
-            else:
-                compare_id = abs(piece_id)//2
-            if abs(state[r][c]) == 1:
-                target_id = 0
-            else:
-                target_id = abs(state[r][c])//2
-
-            if compare_id <= target_id or (compare_id >= 6 and target_id == 0) or state[r][c] == EMPTY:
-                action_idx = move_to_action_space(piece_id, orig_pos, (r, c))
-                if compare_id == 0 and target_id >= 6:
-                    actions[action_idx] = 0
-                    break
-                if abs(r - cur_pos[0]) + abs(c - cur_pos[1]) >= 1:
+            action_idx = move_to_action_space(piece_id, orig_pos, (r, c))
+            compare_id = abs(piece_id) // 2 + 1
+            target_id = abs(state[r][c]) // 2 + 1
+            if state[r][c] == EMPTY:
+                actions[action_idx] = 1
+            elif compare_id <= target_id or (compare_id >= 7 and target_id == 1):
+                if compare_id == 1 and target_id >= 7:
                     actions[action_idx] = 0
                 else:
                     actions[action_idx] = 1

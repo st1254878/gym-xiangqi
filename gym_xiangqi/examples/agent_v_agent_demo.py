@@ -1,3 +1,4 @@
+import random
 
 from gym_xiangqi.agents import RandomAgent
 from gym_xiangqi.agents import TestAgent
@@ -24,79 +25,54 @@ def main():
     results = []  # 用来记录每场比赛的结果
     num_games = 100  # 每组对战的局数
     matchups = [
-        ("YulunAgent", YulunAgent,"RandomAgent" , RandomAgent),
-        ("TestAgent", TestAgent, "YulunAgent", YulunAgent),
-        ("TestAgent", TestAgent, "RandomAgent", RandomAgent),
+
+        ("TestAgent", TestAgent, "TestAgent2", TestAgent),
+
     ]
     for agent1_name, Agent1, agent2_name, Agent2 in matchups:
         print(f"Starting matches: {agent1_name} vs {agent2_name}")
         for game in range(num_games):
             print(f"Game {game + 1} starts!")
-
-            #print(COLOR)
-
-            env = XiangQiEnv(RED)
-
+            side = random.randint(0, 1)
+            env = XiangQiEnv(RED) if side == 0 else XiangQiEnv(BLACK)
             env.render()
-
             # 实例化两个代理
             agent1 = Agent1()
             agent2 = Agent2()
             done = False
             round = 0
             winning = 0
-            first_action = RandomAgent()
-            action = first_action.move(env)
-            env.select_side(action)
             while not done:
-
-                message = "紅棋" if env.turn == ALLY else "黑棋"
-                if (round % 2):
-
-                    print(f"Agent2 policy ({agent2_name})控制{message}")
-
+                waiting_tine = 0.5
+                turn = ""
+                if env.turn == ALLY:
+                    turn = "紅棋" if env.ally_color == RED else "黑棋"
+                    print(f"Agent1 policy ({agent1_name})控制{turn}")
+                    action = agent1.move(env)
+                else:
+                    turn = "紅棋" if env.enemy_color == RED else "黑棋"
+                    print(f"Agent2 policy ({agent2_name})控制{turn}")
                     action = agent2.move(env)
-                    if not action:  # 假设表示 Agent2 没有合法动作
-                        winning = 1  # Agent1 胜利
-                else:
-                    print(f"Agent1 policy ({agent1_name})控制{message}")
-                    if round!= 0:
-                        action = agent1.move(env)
-                        if not action:  # 假设表示 Agent1 没有合法动作
-                            winning = 2  # Agent2 胜利
+                _, reward, done, _ = env.step(action)
+                move = action_space_to_move(action)
+                piece = PIECE_ID_TO_NAME[move[0]]
 
-                if winning != 0:
+                print(f"Round: {round}")
+                print(f"{turn} made the move {piece} from {move[1]} to {move[2]}.")
+                print(f"Reward: {reward}")
+                print("================")
+                if done:
+                    winning = round % 2
                     break
-                else:
-                    _, reward, done, _ = env.step(action)
-                    turn = "Ally" if env.turn == ALLY else "Enemy"
-                    move = action_space_to_move(action)
-                    piece = PIECE_ID_TO_NAME[move[0]]
-
-                    print(f"Round: {round}")
-                    print(f"{turn} made the move {piece} from {move[1]} to {move[2]}.")
-                    print(f"Reward: {reward}")
-                    print("================")
-
-                    round += 1
-                    if round > 1500:
-                        # 达到回合限制后，根据棋子数决定胜负
-                        redmax, blackmax = calculate_remaining_pieces(env)
-                        if redmax < blackmax or (redmax == 0 and blackmax >= 6):
-                            winning = 1
-                        elif redmax > blackmax or (blackmax == 0 and redmax >= 6):
-                            winning = 2
-                        else:
-                            winning = 3
-                        break
-                    time.sleep(0.01)  # 减慢游戏节奏以便观察
+                round += 1
+                time.sleep(waiting_tine)  # 减慢游戏节奏以便观察
                 env.render()
 
             # 关闭环境并记录结果
             env.close()
-            if winning == 1:
+            if winning == 0:
                 results.append((agent1_name, agent2_name, f"{agent1_name} wins"))
-            elif winning == 2:
+            elif winning == 1:
                 results.append((agent1_name, agent2_name, f"{agent2_name} wins"))
             else:
                 results.append((agent1_name, agent2_name, "Draw"))
